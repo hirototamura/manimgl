@@ -233,6 +233,17 @@ class Disk3D(Surface):
             0
         ])
 
+    @Mobject.affects_data
+    def init_points(self):
+        # Call parent to generate points
+        super().init_points()
+        
+        # Override normal calculation for disk
+        # All normals should point in the +Z direction for a disk
+        points = self.get_points()
+        normals = np.tile([0, 0, 1], (len(points), 1))  # All normals point up
+        self.data['d_normal_point'] = points + self.normal_nudge * normals
+
 
 class Square3D(Surface):
     def __init__(
