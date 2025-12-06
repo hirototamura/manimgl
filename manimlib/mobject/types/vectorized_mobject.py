@@ -56,6 +56,43 @@ if TYPE_CHECKING:
 
 
 class VMobject(Mobject):
+    """
+    Vectorized Mobject - Base class for all vector graphics in Manim.
+    
+    VMobject is the foundation of Manim's vector graphics system, providing smooth,
+    scalable graphics using Bézier curves. It supports comprehensive styling,
+    animation, and manipulation capabilities.
+    
+    Attributes:
+        data_dtype (np.dtype): Structured array dtype containing all vertex data
+        pre_function_handle_to_anchor_scale_factor (float): Scale factor for handles
+        make_smooth_after_applying_functions (bool): Auto-smooth after transformations
+        tolerance_for_point_equality (float): Tolerance for point comparison
+        joint_type_map (dict): Mapping of joint types to integer values
+        
+    Data Structure:
+        The VMobject stores its data in a structured numpy array with the following fields:
+        - point: 3D coordinates (x, y, z)
+        - stroke_rgba: Stroke color as RGBA values
+        - stroke_width: Width of the stroke
+        - joint_angle: Angle at curve joints
+        - fill_rgba: Fill color as RGBA values
+        - base_normal: Normal vector for lighting
+        - fill_border_width: Width of fill border
+        
+    Example:
+        >>> # Create a simple circle
+        >>> circle = Circle()
+        >>> circle.set_fill(BLUE, opacity=0.5)
+        >>> circle.set_stroke(RED, width=2)
+        
+        >>> # Create a custom path
+        >>> path = VMobject()
+        >>> path.set_points_as_corners([UP, RIGHT, DOWN, LEFT])
+        >>> path.close_path()
+    """
+    
+    # Structured data type for vertex information
     data_dtype: np.dtype = np.dtype([
         ('point', np.float32, (3,)),
         ('stroke_rgba', np.float32, (4,)),
@@ -97,6 +134,27 @@ class VMobject(Mobject):
         fill_border_width: float = 0.0,
         **kwargs
     ):
+        """
+        Initialize a VMobject.
+        
+        Args:
+            color: Global color that overrides both fill and stroke colors
+            fill_color: Color for the interior of the shape
+            fill_opacity: Opacity of the fill (0.0 to 1.0)
+            stroke_color: Color for the outline/border
+            stroke_opacity: Opacity of the stroke (0.0 to 1.0)
+            stroke_width: Width of the stroke in pixels
+            stroke_behind: Whether to render stroke behind fill
+            background_image_file: Path to background image file
+            long_lines: Whether to use more points for long lines
+            joint_type: Type of joint for connected curves ("auto", "bevel", "miter", "no_joint")
+            flat_stroke: Whether to use flat (non-3D) stroke rendering
+            scale_stroke_with_zoom: Whether stroke width scales with zoom
+            use_simple_quadratic_approx: Use simpler quadratic approximation for cubics
+            anti_alias_width: Width of anti-aliasing in pixels
+            fill_border_width: Width of the fill border
+            **kwargs: Additional arguments passed to parent Mobject class
+        """
         self.fill_color = fill_color or color or DEFAULT_VMOBJECT_FILL_COLOR
         self.fill_opacity = fill_opacity
         self.stroke_color = stroke_color or color or DEFAULT_VMOBJECT_STROKE_COLOR
@@ -1299,7 +1357,28 @@ class VMobject(Mobject):
 
 
 class VGroup(Group, VMobject, Generic[SubVmobjectType]):
+    """
+    Vector Group - A group of VMobjects with vector graphics capabilities.
+    
+    VGroup combines the grouping functionality of Group with the vector
+    graphics capabilities of VMobject, allowing for efficient management
+    and manipulation of multiple vector objects.
+    
+    Example:
+        >>> # Create a group of shapes
+        >>> shapes = VGroup(Circle(), Square(), Triangle())
+        >>> shapes.arrange(RIGHT)
+        >>> shapes.set_color(BLUE)
+    """
+    
     def __init__(self, *vmobjects: SubVmobjectType | Iterable[SubVmobjectType], **kwargs):
+        """
+        Initialize a VGroup with VMobjects.
+        
+        Args:
+            *vmobjects: VMobjects to include in the group
+            **kwargs: Additional arguments passed to parent classes
+        """
         super().__init__(**kwargs)
         if any(isinstance(vmob, Mobject) and not isinstance(vmob, VMobject) for vmob in vmobjects):
             raise Exception("Only VMobjects can be passed into VGroup")
@@ -1317,6 +1396,13 @@ class VGroup(Group, VMobject, Generic[SubVmobjectType]):
 
 
 class VectorizedPoint(Point, VMobject):
+    """
+    A point represented as a VMobject.
+    
+    This allows points to be used in vector graphics contexts while
+    maintaining the simplicity of a single point.
+    """
+    
     def __init__(
         self,
         location: np.ndarray = ORIGIN,
@@ -1325,6 +1411,16 @@ class VectorizedPoint(Point, VMobject):
         stroke_width: float = 0.0,
         **kwargs
     ):
+        """
+        Initialize a vectorized point.
+        
+        Args:
+            location: 3D location of the point
+            color: Color of the point
+            fill_opacity: Fill opacity
+            stroke_width: Stroke width
+            **kwargs: Additional arguments
+        """
         Point.__init__(self, location, **kwargs)
         VMobject.__init__(
             self,
@@ -1337,7 +1433,21 @@ class VectorizedPoint(Point, VMobject):
 
 
 class CurvesAsSubmobjects(VGroup):
+    """
+    Converts a VMobject's curves into individual submobjects.
+    
+    This is useful for animating individual curve segments or
+    applying different styles to different parts of a path.
+    """
+    
     def __init__(self, vmobject: VMobject, **kwargs):
+        """
+        Initialize with curves from a VMobject.
+        
+        Args:
+            vmobject: VMobject to extract curves from
+            **kwargs: Additional arguments
+        """
         super().__init__(**kwargs)
         for tup in vmobject.get_bezier_tuples():
             part = VMobject()
@@ -1347,6 +1457,13 @@ class CurvesAsSubmobjects(VGroup):
 
 
 class DashedVMobject(VMobject):
+    """
+    Creates a dashed version of a VMobject.
+    
+    The original VMobject is divided into segments with gaps between them,
+    creating a dashed line effect.
+    """
+    
     def __init__(
         self,
         vmobject: VMobject,
@@ -1354,6 +1471,15 @@ class DashedVMobject(VMobject):
         positive_space_ratio: float = 0.5,
         **kwargs
     ):
+        """
+        Initialize a dashed VMobject.
+        
+        Args:
+            vmobject: VMobject to make dashed
+            num_dashes: Number of dash segments
+            positive_space_ratio: Ratio of dash to gap (0.0 to 1.0)
+            **kwargs: Additional arguments
+        """
         super().__init__(**kwargs)
 
         if num_dashes > 0:
@@ -1378,6 +1504,13 @@ class DashedVMobject(VMobject):
 
 
 class VHighlight(VGroup):
+    """
+    Creates a highlight effect for a VMobject.
+    
+    This creates multiple layers of the VMobject with increasing
+    stroke width and fading colors to create a highlight effect.
+    """
+    
     def __init__(
         self,
         vmobject: VMobject,
@@ -1385,6 +1518,15 @@ class VHighlight(VGroup):
         color_bounds: Tuple[ManimColor] = (GREY_C, GREY_E),
         max_stroke_addition: float = 5.0,
     ):
+        """
+        Initialize a highlight effect.
+        
+        Args:
+            vmobject: VMobject to highlight
+            n_layers: Number of highlight layers
+            color_bounds: Color range for the highlight
+            max_stroke_addition: Maximum additional stroke width
+        """
         outline = vmobject.replicate(n_layers)
         outline.set_fill(opacity=0)
         added_widths = np.linspace(0, max_stroke_addition, n_layers + 1)[1:]
