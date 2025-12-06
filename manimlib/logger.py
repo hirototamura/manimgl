@@ -2,7 +2,7 @@ import logging
 
 from rich.logging import RichHandler
 
-__all__ = ["log"]
+__all__ = ["log", "logger"]
 
 
 FORMAT = "%(message)s"
@@ -11,3 +11,4 @@ logging.basicConfig(
 )
 
 log = logging.getLogger("manimgl")
+logger = log  # Alias for compatibility with manim_voiceover
